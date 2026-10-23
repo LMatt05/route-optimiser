@@ -2,6 +2,8 @@ package com.lukematthews.routeoptimiser.config;
 
 import com.lukematthews.routeoptimiser.routing.OsrmRoutingClient;
 import com.lukematthews.routeoptimiser.routing.RoutingClient;
+import com.lukematthews.routeoptimiser.solver.RouteSolver;
+import com.lukematthews.routeoptimiser.solver.TwoOptSolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -28,5 +30,10 @@ public class AppConfig {
     @Bean
     RoutingClient routingClient(RestClient osrmRestClient){
         return new OsrmRoutingClient(osrmRestClient);
+    }
+
+    @Bean
+    RouteSolver routeSolver(){
+        return new TwoOptSolver();
     }
 }
