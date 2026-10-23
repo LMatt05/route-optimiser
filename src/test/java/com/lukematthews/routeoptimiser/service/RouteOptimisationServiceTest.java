@@ -56,7 +56,7 @@ class RouteOptimisationServiceTest {
             return lineMatrix(0,1,2);
         };
 
-        serviceWith(client, new NearestNeighboutSolver(), 10).optimise(a, List.of(b,c));
+        serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b,c));
 
         assertEquals(1, received.size());
         assertEquals(List.of(a.coordinate(), b.coordinate(), c.coordinate()), received.get(0));
@@ -80,7 +80,7 @@ class RouteOptimisationServiceTest {
         Stop d = new Stop("D", new Coordinate(51.8, -0.4));
         RoutingClient client = coords -> lineMatrix(0,5,1,2);
 
-        Route route = serviceWith(client, new NearestNeighboutSolver(), 10).optimise(a, List.of(b,c,d));
+        Route route = serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b,c,d));
 
         assertEquals(List.of(a,c,d,b), route.stops());
         assertEquals(5, route.totalDurationSeconds()); // 1+1+3
@@ -91,7 +91,7 @@ class RouteOptimisationServiceTest {
         RoutingClient client = coords -> lineMatrix(0,1,2);
 
         assertDoesNotThrow(()->
-                serviceWith(client, new NearestNeighboutSolver(), 3).optimise(a,List.of(b,c)));
+                serviceWith(client, new NearestNeighbourSolver(), 3).optimise(a,List.of(b,c)));
     }
 
     @Test
@@ -101,7 +101,7 @@ class RouteOptimisationServiceTest {
             calls.incrementAndGet();
             return lineMatrix(0,1,2,3);
         };
-        RouteOptimisationService service = serviceWith(client, new NearestNeighboutSolver(), 3);
+        RouteOptimisationService service = serviceWith(client, new NearestNeighbourSolver(), 3);
 
         Stop d = new Stop("D", new Coordinate(51.8,-0.4));
         assertThrows(IllegalArgumentException.class, () -> service.optimise(a,List.of(b,c,d)));
@@ -111,7 +111,7 @@ class RouteOptimisationServiceTest {
     @Test
     void rejectsEmptyNullInputs(){
         RouteOptimisationService service =
-                serviceWith(coords->lineMatrix(0), new NearestNeighboutSolver(), 10);
+                serviceWith(coords->lineMatrix(0), new NearestNeighbourSolver(), 10);
 
         assertThrows(IllegalArgumentException.class, () -> service.optimise(a, List.of()));
         assertThrows(NullPointerException.class, () -> service.optimise(null, List.of(b)));
