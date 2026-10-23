@@ -10,8 +10,8 @@ public interface RoutingClient {
      * @return a matrix where entry [i][j] is the driving time in seconds from
      *         coordinates.get(i) to coordinates.get(j)
      * @throws IllegalArgumentException     if the list is null or empty
-     * @throws NoRouteFoundException        if any pair of points cannot be connected
-     * @throws RoutingUnavailableException  if the routing backend fails
+     * @throws com.lukematthews.routeoptimiser.domain.NoRouteFoundException        if any pair of points cannot be connected
+     * @throws com.lukematthews.routeoptimiser.domain.RoutingUnavailableException  if the routing backend fails
      */
     DurationMatrix getDurationMatrix(List<Coordinate> coordinates);
 }
