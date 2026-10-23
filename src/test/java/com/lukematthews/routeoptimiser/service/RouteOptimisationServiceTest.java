@@ -11,23 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.lukematthews.routeoptimiser.testsupport.TestMatrices.line;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RouteOptimisationServiceTest {
     private final Stop a = new Stop("A", new Coordinate(51.5, -0.1));
     private final Stop b = new Stop("B", new Coordinate(51.6,-0.2));
     private final Stop c = new Stop("C", new Coordinate(51.7,-0.3));
-
-    private static DurationMatrix lineMatrix(double ... positions){
-        int n = positions.length;
-        double[][] d = new double [n][n];
-        for(int i = 0; i < n; i++){
-            for (int j = 0; j<0;j++){
-                d[i][j] = Math.abs(positions[i] - positions[j]);
-            }
-        }
-        return new DurationMatrix(d);
-    }
 
     private static RouteOptimisationService serviceWith(RoutingClient client, RouteSolver solver, int maxStops){
         return new RouteOptimisationService(client, solver, new RouteProperties(maxStops));
@@ -36,7 +26,7 @@ class RouteOptimisationServiceTest {
     @Test
     void returnsStopsInSolverOrderWithLegDurationsFromMatrix(){
         //positions: A=0, B=10, C=3
-        RoutingClient client = coords -> lineMatrix(0,10,3);
+        RoutingClient client = coords -> line(0,10,3);
         RouteSolver solver = (matrix, start) -> List.of(0,2,1); //A, C, B
 
         Route route = serviceWith(client, solver, 10).optimise(a, List.of(b,c));
@@ -53,7 +43,7 @@ class RouteOptimisationServiceTest {
         List<List<Coordinate>> received = new ArrayList<>();
         RoutingClient client = coords ->{
             received.add(coords);
-            return lineMatrix(0,1,2);
+            return line(0,1,2);
         };
 
         serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b,c));
@@ -69,7 +59,7 @@ class RouteOptimisationServiceTest {
             startIndexes.add(start);
             return List.of(0,1,2);
         };
-        serviceWith(coords -> lineMatrix(0,1,2), solver, 10).optimise(a, List.of(b,c));
+        serviceWith(coords -> line(0,1,2), solver, 10).optimise(a, List.of(b,c));
 
         assertEquals(List.of(0), startIndexes);
     }
@@ -78,7 +68,7 @@ class RouteOptimisationServiceTest {
     void worksWithRealSolver(){
         //positions: A = 0, B=5, C=1, D=2 -> nearest first from A goes C,D,B
         Stop d = new Stop("D", new Coordinate(51.8, -0.4));
-        RoutingClient client = coords -> lineMatrix(0,5,1,2);
+        RoutingClient client = coords -> line(0,5,1,2);
 
         Route route = serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b,c,d));
 
@@ -88,7 +78,7 @@ class RouteOptimisationServiceTest {
 
     @Test
     void acceptsExactlyMaximumNumberStops(){
-        RoutingClient client = coords -> lineMatrix(0,1,2);
+        RoutingClient client = coords -> line(0,1,2);
 
         assertDoesNotThrow(()->
                 serviceWith(client, new NearestNeighbourSolver(), 3).optimise(a,List.of(b,c)));
@@ -99,7 +89,7 @@ class RouteOptimisationServiceTest {
         AtomicInteger calls = new AtomicInteger();
         RoutingClient client = coords->{
             calls.incrementAndGet();
-            return lineMatrix(0,1,2,3);
+            return line(0,1,2,3);
         };
         RouteOptimisationService service = serviceWith(client, new NearestNeighbourSolver(), 3);
 
@@ -111,7 +101,7 @@ class RouteOptimisationServiceTest {
     @Test
     void rejectsEmptyNullInputs(){
         RouteOptimisationService service =
-                serviceWith(coords->lineMatrix(0), new NearestNeighbourSolver(), 10);
+                serviceWith(coords->line(0), new NearestNeighbourSolver(), 10);
 
         assertThrows(IllegalArgumentException.class, () -> service.optimise(a, List.of()));
         assertThrows(NullPointerException.class, () -> service.optimise(null, List.of(b)));
@@ -135,7 +125,7 @@ class RouteOptimisationServiceTest {
 
     @Test
     void detectsInvalidOrderFromSolver() {
-        RoutingClient client = coords -> lineMatrix(0, 1, 2);
+        RoutingClient client = coords -> line(0, 1, 2);
 
         RouteSolver wrongSize = (m, s) -> List.of(0, 1);
         RouteSolver wrongStart = (m, s) -> List.of(1, 0, 2);
@@ -149,7 +139,7 @@ class RouteOptimisationServiceTest {
 
     @Test
     void detectsMatrixOfWrongSize() {
-        RoutingClient client = coords -> lineMatrix(0, 1);   // 2 points for 3 stops
+        RoutingClient client = coords -> line(0, 1);   // 2 points for 3 stops
 
         assertThrows(IllegalStateException.class,
                 () -> serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b, c)));

@@ -5,23 +5,13 @@ import org.junit.jupiter.api.Test;
 
 import java.util.*;
 
+import static com.lukematthews.routeoptimiser.testsupport.TestMatrices.line;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TwoOptSolverTest {
-    private static DurationMatrix lineMatrix(double ... positions){
-        int n = positions.length;
-        double[][] d = new double[n][n];
-        for (int i = 0; i <  n; i++){
-            for (int j = 0; j < n; j++){
-                d[i][j] = Math.abs(positions[i] - positions[j]);
-            }
-        }
-        return new DurationMatrix(d);
-    }
-
     @Test
     void fixesCrossingInMiddleOfPath(){
-        DurationMatrix matrix = lineMatrix(0,1,2,3);
+        DurationMatrix matrix = line(0,1,2,3);
         RouteSolver badStart = (m,s) -> List.of(0,2,1,3); //cost 5
         List<Integer> result = new TwoOptSolver(badStart).solve(matrix,0);
 
@@ -32,7 +22,7 @@ class TwoOptSolverTest {
     @Test
     void reversesTailWhenPathEndsInSegment(){
         //index -> position: 0->, 1->3, 2->2, 3->1
-        DurationMatrix matrix = lineMatrix(0,3,2,1);
+        DurationMatrix matrix = line(0,3,2,1);
         RouteSolver badStart = (m,s) -> List.of(0,1,2,3); // cost 5
 
         List<Integer> result = new TwoOptSolver(badStart).solve(matrix, 0);
@@ -43,21 +33,21 @@ class TwoOptSolverTest {
 
     @Test
     void leavesAlreadyOptimalPathUnchanged(){
-        DurationMatrix matrix = lineMatrix(0,1,2,3);
+        DurationMatrix matrix = line(0,1,2,3);
         RouteSolver optimal = (m, s) -> List.of(0,1,2,3);
         assertEquals(List.of(0,1,2,3), new TwoOptSolver(optimal).solve(matrix, 0));
     }
 
     @Test
     void handlesTinyInputs(){
-        assertEquals(List.of(0), new TwoOptSolver().solve(lineMatrix(5), 0));
-        assertEquals(List.of(1,0), new TwoOptSolver().solve(lineMatrix(5,9),1));
+        assertEquals(List.of(0), new TwoOptSolver().solve(line(5), 0));
+        assertEquals(List.of(1,0), new TwoOptSolver().solve(line(5,9),1));
     }
 
     @Test
     void rejectsInitialSolverThatIgnoresStart(){
         RouteSolver broken = (m,s) -> List.of(1,0,2);
-        assertThrows(IllegalStateException.class, () -> new TwoOptSolver(broken).solve(lineMatrix(0,1,2), 0));
+        assertThrows(IllegalStateException.class, () -> new TwoOptSolver(broken).solve(line(0,1,2), 0));
     }
 
     @Test
