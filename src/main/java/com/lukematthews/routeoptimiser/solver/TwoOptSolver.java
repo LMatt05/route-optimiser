@@ -14,7 +14,7 @@ public class TwoOptSolver implements RouteSolver{
     private final RouteSolver initialSolver;
 
     public TwoOptSolver(){
-        this(new NearestNeighboutSolver());
+        this(new NearestNeighbourSolver());
     }
     public TwoOptSolver(RouteSolver initialSolver){
         this.initialSolver = Objects.requireNonNull(initialSolver, "initialSolver must not be null");

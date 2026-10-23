@@ -11,8 +11,8 @@ import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class NearestNeighboutSolverTest {
-    private final RouteSolver solver = new NearestNeighboutSolver();
+class NearestNeighbourSolverTest {
+    private final RouteSolver solver = new NearestNeighbourSolver();
 
     /**Builds a symmetric matrix for points on a line, so distances are easy to reason about. */
     private static DurationMatrix lineMatrix(double ... positions){

@@ -74,7 +74,7 @@ class TwoOptSolverTest {
             DurationMatrix matrix = new DurationMatrix(d);
             int start = random.nextInt(n);
 
-            List<Integer> initial = new NearestNeighboutSolver().solve(matrix, start);
+            List<Integer> initial = new NearestNeighbourSolver().solve(matrix, start);
             List<Integer> result = new TwoOptSolver().solve(matrix, start);
 
             //valid permutation beginning at start

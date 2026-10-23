@@ -5,7 +5,7 @@ import com.lukematthews.routeoptimiser.domain.DurationMatrix;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NearestNeighboutSolver implements RouteSolver{
+public class NearestNeighbourSolver implements RouteSolver{
     @Override
     public List<Integer> solve(DurationMatrix matrix, int startIndex){
         int n = matrix.size();
