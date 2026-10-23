@@ -1,0 +1,10 @@
+POST http://localhost:8080/api/v1/routes/optimise
+Content-Type: application/json
+
+{
+  "start": { "label": "Depot", "latitude": 51.5074, "longitude": -0.1278 },
+  "destinations": [
+    { "label": "A", "latitude": 51.5155, "longitude": -0.0922 },
+    { "label": "B", "latitude": 51.5033, "longitude": -0.1195 }
+  ]
+}
