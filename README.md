@@ -163,7 +163,7 @@ Error bodies look like:
 - Driving profile only, with no live traffic or time-of-day effects.
 - OSRM snaps each point to the nearest road, so a point in a park or river can be routed from somewhere slightly different.
 - Results are heuristic and not guaranteed to be the shortest possible.
-- Coordinates must fall inside the processed map region.
+- Coordinates must fall inside the processed map region. (coordinates outside of loaded area will be snapped to nearest point in loaded area)
 
 ## Development
 
