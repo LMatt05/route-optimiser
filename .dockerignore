@@ -1,0 +1,7 @@
+target/
+.git/
+.idea/
+*.iml
+osrm-data/
+requests/
+README.md
