@@ -46,7 +46,13 @@ export default function MapView({ start, destinations, result, onMapClick }: Pro
             ))}
 
             {result && (
-                <Polyline positions={result.stops.map((s) => [s.latitude, s.longitude] as [number, number])} />
+                <Polyline
+                    positions={
+                    result.geometry && result.geometry.length > 0
+                        ? result.geometry.map(([lon, lat]) => [lat, lon] as [number, number]) //swap to Leaflet's order
+                        : result.stops.map((s) => [s.latitude, s.longitude] as [number, number])
+                    }
+                />
             )}
         </MapContainer>
     )

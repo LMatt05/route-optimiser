@@ -25,4 +25,5 @@ export interface OptimiseResponse{
     stops: Stop[]
     legs: Leg[]
     totalDurationSeconds: number
+    geometry?: [number, number] [] // [longitude, latitude] pairs along the roads
 }
