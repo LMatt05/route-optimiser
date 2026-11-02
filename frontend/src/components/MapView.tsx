@@ -19,18 +19,19 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
 }
 
 interface Props {
+    bounds: L.LatLngBounds
     start: StopInput | null
     destinations: StopInput[]
     result?: OptimiseResponse
     onMapClick: (lat: number, lng: number) => void
 }
 
-export default function MapView({ start, destinations, result, onMapClick }: Props){
+export default function MapView({ bounds, start, destinations, result, onMapClick }: Props){
     //after optimising, show points in visiting order; before, in the order added.
     const points = result ? result.stops : start ? [start, ...destinations] : []
 
     return(
-        <MapContainer center={LONDON} zoom={11} className ="map">
+        <MapContainer bounds={bounds} maxBounds={bounds} maxBoundsViscosity={1.0} minZoom={9} className ="map">
             <TileLayer
                 attribution="&copy; OpenStreetMap contributors"
                 url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

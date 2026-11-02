@@ -3,6 +3,10 @@ import type {StopInput} from "./types/route.ts";
 import {ApiRequestError, optimiseRoute} from "./api/routeClient.ts";
 import {useMutation} from "@tanstack/react-query";
 import MapView from "./components/MapView.tsx";
+import { useMapBounds } from './hooks/useMapBounds.ts'
+
+
+
 
 const MAX_STOPS = 50 // matches route.max-stops, includes start.
 
@@ -12,8 +16,15 @@ export default function App() {
   const [start, setStart] = useState<StopInput | null>(null)
   const [destinations, setDestinations] = useState<StopInput[]>([])
   const mutation = useMutation({ mutationFn: optimiseRoute})
+  const { bounds, isLoading: boundsLoading, error: boundsError } = useMapBounds()
+  const [notice, setNotice] = useState<string | null>(null)
 
   function handleMapClick(lat: number, lng: number){
+    if(!bounds?.contains([lat, lng])) {
+      setNotice('That point is outside the loaded map area.')
+      return
+    }
+    setNotice(null)
     mutation.reset() // a new point invalidates the old result
     const point = { latitude: round(lat), longitude: round(lng)}
     if(!start) setStart({ ...point, label: 'Start' })
@@ -42,6 +53,10 @@ export default function App() {
           <p className="hint">
             {!start ? 'Click the map to set the start point.' : 'Click the mpa to add stops.'}
           </p>
+
+          {boundsLoading && <p className="hint"> Loading map area...</p>}
+          {boundsError && <ErrorBox error={boundsError}/>}
+          {notice && <p className="error" role="status">{notice}</p>}
 
           <ul className="stop-list">
             {start && <li><strong>S</strong>{start.label}</li>}
@@ -77,7 +92,9 @@ export default function App() {
           )}
         </aside>
 
-        <MapView start={start} destinations={destinations} result={result} onMapClick={handleMapClick}/>
+        {bounds && (
+            <MapView bounds={bounds} start={start} destinations={destinations} result={result} onMapClick={handleMapClick}/>
+        )}
       </div>
   )
 }
