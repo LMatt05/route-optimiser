@@ -3,12 +3,18 @@ package com.lukematthews.routeoptimiser.domain;
 import java.util.List;
 import java.util.Objects;
 
-public record Route(List<Stop> stops, List<RouteLeg> legs) {
+public record Route(List<Stop> stops, List<RouteLeg> legs, List<Coordinate> geometry) {
+    /** A route without road geometry (UI falls back to straight lines). */
+    public Route(List<Stop> stops, List<RouteLeg> legs){
+        this(stops, legs, List.of());
+    }
+
     public Route{
         Objects.requireNonNull(stops, "stop must not be null");
         Objects.requireNonNull(legs, "legs must not be null");
         stops = List.copyOf(stops);
         legs = List.copyOf(legs);
+        geometry = List.copyOf(geometry);
 
         if (stops.isEmpty()){
             throw new IllegalArgumentException("a route needs at least one stop");

@@ -4,6 +4,8 @@ import com.lukematthews.routeoptimiser.config.RouteProperties;
 import com.lukematthews.routeoptimiser.domain.*;
 import com.lukematthews.routeoptimiser.routing.RoutingClient;
 import com.lukematthews.routeoptimiser.solver.RouteSolver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -12,6 +14,7 @@ import java.util.Objects;
 
 @Service
 public class RouteOptimisationService {
+    private static final Logger log = LoggerFactory.getLogger(RouteOptimisationService.class);
 
     /** The start is placed first in the list sent to OSRM, so it is always index 0. */
     private static final int START_INDEX = 0;
@@ -65,9 +68,24 @@ public class RouteOptimisationService {
         List<Integer> order = routeSolver.solve(matrix, START_INDEX);
         checkOrder(order, totalStops);
 
-        return buildRoute(stops, order, matrix);
+        List<Coordinate> orderedCoordinates = order.stream().map(coordinates::get).toList();
+        List<Coordinate> geometry = fetchGeometry(orderedCoordinates);
+
+        return buildRoute(stops, order, matrix, geometry);
     }
 
+    /**
+     * Road geometry is a nice have: visiting order is valid without it,
+     * routing failures fall back to empty list instead of failing request.
+     */
+    private List<Coordinate> fetchGeometry(List<Coordinate> orderedCoordinates){
+        try{
+            return routingClient.getRouteGeometry(orderedCoordinates);
+        }catch (NoRouteFoundException | RoutingUnavailableException e){
+            log.warn("Could no fetch road geomety; returning route without it", e);
+            return List.of();
+        }
+    }
     /** prevents solvers from producing incorrect route.*/
     private static void checkOrder(List<Integer> order, int n){
         if (order.size() != n || order.get(0) != START_INDEX){
@@ -82,7 +100,7 @@ public class RouteOptimisationService {
         }
     }
 
-    private static Route buildRoute(List<Stop> stops, List<Integer> order, DurationMatrix matrix){
+    private static Route buildRoute(List<Stop> stops, List<Integer> order, DurationMatrix matrix, List<Coordinate> geometry){
         List<Stop> orderedStops = new ArrayList<>(order.size());
         List<RouteLeg> legs = new ArrayList<>(order.size() - 1);
 
@@ -93,7 +111,7 @@ public class RouteOptimisationService {
                 legs.add(new RouteLeg(orderedStops.get(i-1), orderedStops.get(i), seconds));
             }
         }
-        return new Route(orderedStops, legs);
+        return new Route(orderedStops, legs, geometry);
     }
 
 }

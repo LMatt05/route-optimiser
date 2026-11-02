@@ -2,6 +2,8 @@ package com.lukematthews.routeoptimiser.api;
 
 import com.lukematthews.routeoptimiser.api.exception.GlobalExceptionHandler;
 import com.lukematthews.routeoptimiser.config.RouteProperties;
+import com.lukematthews.routeoptimiser.domain.Coordinate;
+import com.lukematthews.routeoptimiser.domain.DurationMatrix;
 import com.lukematthews.routeoptimiser.domain.NoRouteFoundException;
 import com.lukematthews.routeoptimiser.domain.RoutingUnavailableException;
 import com.lukematthews.routeoptimiser.routing.RoutingClient;
@@ -15,6 +17,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -66,6 +69,24 @@ class RouteControllerTest {
                 .mapToObj(i -> "{\"latitude\": 51.5, \"longitude\": -0.1}")
                 .collect(Collectors.joining(","));
         return "{\"start\": {\"latitude\": 51.5, \"longitude\": -0.1}, \"destinations\": [" + destinations + "]}";
+    }
+
+    private static RoutingClient clientWithGeometry(DurationMatrix matrix, GeometrySupplier geometry) {
+        return new RoutingClient() {
+            @Override
+            public DurationMatrix getDurationMatrix(List<Coordinate> coords) {
+                return matrix;
+            }
+
+            @Override
+            public List<Coordinate> getRouteGeometry(List<Coordinate> ordered) {
+                return geometry.get(ordered);
+            }
+        };
+    }
+    @FunctionalInterface
+    private interface GeometrySupplier {
+        List<Coordinate> get(List<Coordinate> ordered);
     }
 
     @Test
@@ -179,5 +200,43 @@ class RouteControllerTest {
         send(mvc, VALID_REQUEST)
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
+    }
+
+    @Test
+    void includesRoadGeometryAsLongitudeThenLatitude() throws Exception {
+        MockMvc mvc = mockMvcWith(clientWithGeometry(
+                TestMatrices.line(0, 10, 3),
+                ordered -> List.of(new Coordinate(51.5074, -0.1278), new Coordinate(51.7, -0.3))));
+
+        send(mvc, VALID_REQUEST)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.geometry.length()").value(2))
+                .andExpect(jsonPath("$.geometry[0][0]").value(-0.1278))   // longitude first
+                .andExpect(jsonPath("$.geometry[0][1]").value(51.5074))   // then latitude
+                .andExpect(jsonPath("$.geometry[1][0]").value(-0.3))
+                .andExpect(jsonPath("$.geometry[1][1]").value(51.7));
+    }
+
+    @Test
+    void geometryIsAnEmptyArrayWhenTheClientProvidesNone() throws Exception {
+        MockMvc mvc = mockMvcWith(coords -> TestMatrices.line(0, 10, 3));   // default method returns empty
+
+        send(mvc, VALID_REQUEST)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.geometry").isArray())
+                .andExpect(jsonPath("$.geometry.length()").value(0));
+    }
+
+    @Test
+    void geometryFailureStillReturnsTheRoute() throws Exception {
+        MockMvc mvc = mockMvcWith(clientWithGeometry(
+                TestMatrices.line(0, 10, 3),
+                ordered -> { throw new RoutingUnavailableException("osrm /route failed"); }));
+
+        send(mvc, VALID_REQUEST)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stops.length()").value(3))
+                .andExpect(jsonPath("$.totalDurationSeconds").value(10.0))
+                .andExpect(jsonPath("$.geometry.length()").value(0));
     }
 }

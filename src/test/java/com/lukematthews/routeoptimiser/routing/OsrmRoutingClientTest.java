@@ -23,7 +23,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 class OsrmRoutingClientTest {
 
     private static final String BASE =  "http://osrm.test";
-
+    private static final String ROUTE_URL = BASE + "/route/v1/driving/-0.127800,51.507400;2.352200,48.856600?overview=full&geometries=geojson";
     private final Coordinate london = new Coordinate(51.5074, -0.1278);
     private final Coordinate paris = new Coordinate(48.8566, 2.3522);
 
@@ -126,5 +126,57 @@ class OsrmRoutingClientTest {
                 .andRespond(withSuccess("{\"code\":\"Ok\",\"durations\":[[0]]}", MediaType.APPLICATION_JSON));
 
         assertThrows(RoutingUnavailableException.class, () -> client.getDurationMatrix(List.of(london, paris)));
+    }
+    @Test
+    void requestsRouteGeometryAndConvertsToLatitudeFirst() {
+        server.expect(requestTo(ROUTE_URL))
+                .andExpect(method(GET))
+                .andRespond(withSuccess(
+                        "{\"code\":\"Ok\",\"routes\":[{\"geometry\":{\"type\":\"LineString\","
+                                + "\"coordinates\":[[-0.1278,51.5074],[1.0,50.0],[2.3522,48.8566]]}}]}",
+                        MediaType.APPLICATION_JSON));
+
+        List<Coordinate> points = client.getRouteGeometry(List.of(london, paris));
+
+        assertEquals(List.of(london, new Coordinate(50.0, 1.0), paris), points);
+        server.verify();
+    }
+
+    @Test
+    void noRouteCodeMeansNoRouteForGeometry() {
+        server.expect(requestTo(ROUTE_URL))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":\"NoRoute\",\"message\":\"Impossible route\"}"));
+
+        assertThrows(NoRouteFoundException.class, () -> client.getRouteGeometry(List.of(london, paris)));
+    }
+
+    @Test
+    void geometryServerErrorMeansUnavailable() {
+        server.expect(requestTo(ROUTE_URL)).andRespond(withServerError());
+
+        assertThrows(RoutingUnavailableException.class, () -> client.getRouteGeometry(List.of(london, paris)));
+    }
+
+    @Test
+    void geometryConnectionFailureMeansUnavailable() {
+        server.expect(requestTo(ROUTE_URL))
+                .andRespond(withException(new IOException("connection refused")));
+
+        assertThrows(RoutingUnavailableException.class, () -> client.getRouteGeometry(List.of(london, paris)));
+    }
+
+    @Test
+    void routeWithoutGeometryMeansUnavailable() {
+        server.expect(requestTo(ROUTE_URL))
+                .andRespond(withSuccess("{\"code\":\"Ok\",\"routes\":[]}", MediaType.APPLICATION_JSON));
+
+        assertThrows(RoutingUnavailableException.class, () -> client.getRouteGeometry(List.of(london, paris)));
+    }
+
+    @Test
+    void geometryNeedsAtLeastTwoCoordinates() {
+        assertThrows(IllegalArgumentException.class, () -> client.getRouteGeometry(List.of(london)));
+        assertThrows(IllegalArgumentException.class, () -> client.getRouteGeometry(null));
     }
 }

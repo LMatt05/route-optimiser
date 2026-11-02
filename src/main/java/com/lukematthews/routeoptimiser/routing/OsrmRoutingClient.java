@@ -4,11 +4,13 @@ import com.lukematthews.routeoptimiser.domain.Coordinate;
 import com.lukematthews.routeoptimiser.domain.DurationMatrix;
 import com.lukematthews.routeoptimiser.domain.NoRouteFoundException;
 import com.lukematthews.routeoptimiser.domain.RoutingUnavailableException;
+import com.lukematthews.routeoptimiser.routing.dto.OsrmRouteResponse;
 import com.lukematthews.routeoptimiser.routing.dto.OsrmTableResponse;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -31,19 +33,49 @@ public class OsrmRoutingClient implements RoutingClient{
         if(n == 1){
             return new DurationMatrix(new double[][] {{0}});
         }
-
-        OsrmTableResponse body = fetch(coordinates);
+        String uri = "/table/v1/driving/" + toPath(coordinates) + "?annotations=duration";
+        OsrmTableResponse body = fetch(uri, OsrmTableResponse.class);
         if (body == null){
             throw new RoutingUnavailableException("OSRM returned an empty response");
         }
         if(!"Ok".equals(body.code())){
-            throw errorFor(body);
+            throw errorFor(body.code(), body.message());
         }
         return toMatrix(body, n);
     }
 
-    private OsrmTableResponse fetch(List<Coordinate> coordinates){
-        String uri = "/table/v1/driving/" + toPath(coordinates) + "?annotations=duration";
+    @Override
+    public List<Coordinate> getRouteGeometry(List<Coordinate> orderedCoordinates){
+        if (orderedCoordinates == null || orderedCoordinates.size() < 2){
+            throw new IllegalArgumentException("at least two coordinates are required");
+        }
+        String uri = "/route/v1/driving/" + toPath(orderedCoordinates) + "?overview=full&geometries=geojson";
+        OsrmRouteResponse body = fetch(uri, OsrmRouteResponse.class);
+        if (body == null){
+            throw new RoutingUnavailableException("OSRM returned an empty response");
+        }
+        if(!"Ok".equals(body.code())){
+            throw errorFor(body.code(), body.message());
+        }
+        return toGeometry(body);
+    }
+
+    private static List<Coordinate> toGeometry(OsrmRouteResponse body){
+        if(body.routes() == null || body.routes().isEmpty() || body.routes().get(0).geometry() == null || body.routes().get(0).geometry().coordinates() == null){
+            throw new RoutingUnavailableException("OSRM returned a route without geometry");
+        }
+        List<Coordinate> points = new ArrayList<>();
+        for (List<Double> position : body.routes().get(0).geometry().coordinates()){
+            if(position == null || position.size() < 2) {
+                throw new RoutingUnavailableException("OSRM returned a malformed geometry position");
+            }
+            //GeoJSON is [longitude, latitude]; domain constructor is assumed to be (latitude, longitude)
+            points.add(new Coordinate(position.get(1), position.get(0)));
+        }
+        return List.copyOf(points);
+    }
+
+    private <T> T fetch(String uri, Class<T> responseType){
         try{
             return restClient.get()
                     .uri(uri)
@@ -55,7 +87,7 @@ public class OsrmRoutingClient implements RoutingClient{
                                     "OSRM responded with HTTP " + response.getStatusCode().value()
                             );
                         }
-                        return response.bodyTo(OsrmTableResponse.class);
+                        return response.bodyTo(responseType);
                     });
         } catch (RestClientException e) {
             // connection refused, timeout, or an unreadable body
@@ -70,10 +102,9 @@ public class OsrmRoutingClient implements RoutingClient{
                 .collect(Collectors.joining(";"));
     }
 
-    private static RuntimeException errorFor(OsrmTableResponse body){
-        String code = body.code();
-        String detail = body.message() == null ? code : code + ": " + body.message();
-        if ("NoTable".equals(code) || "NoSegment".equals(code)){
+    private static RuntimeException errorFor(String code, String message){
+        String detail = message == null ? code : code + ": " + message;
+        if ("NoTable".equals(code) || "NoSegment".equals(code) || "NoRoute".equals(code)){
             return new NoRouteFoundException("OSRM could not connect the points(" + detail + ")");
         }
         //InvalidQuery, TooBig, etc. means request wrong, not caller's fault

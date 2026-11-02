@@ -1,0 +1,13 @@
+html, body, #root { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+.layout { display: flex; height: 100%; }
+.sidebar { width: 320px; padding: 16px; overflow-y: auto; box-sizing: border-box; }
+.map { flex: 1; height: 100%; }
+.stop-list { padding-left: 0; list-style: none; }
+.stop-list li { display: flex; justify-content: space-between; padding: 4px 0; }
+.error { background: #fde8e8; color: #9b1c1c; padding: 8px; margin-top: 12px; border-radius: 4px; }
+.pin {
+  width: 28px; height: 28px; border-radius: 50%; background: #2563eb; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .4);
+}
+.pin-start { background: #16a34a; }

@@ -15,6 +15,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATA_DIR="${ROOT_DIR}/osrm-data"
 URL="https://download.geofabrik.de/${REGION}-latest.osm.pbf"
 
+POLY_URL="https://download.geofabrik.de/${REGION}.poly"
+ENV_FILE="${ROOT_DIR}/.env"
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is required but was not found on your PATH." >&2
   exit 1
@@ -27,6 +30,39 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 mkdir -p "${DATA_DIR}"
+
+echo "==> Reading map bounds from ${POLY_URL}"
+if ! POLY="$(curl --fail --silent --location "${POLY_URL}")"; then
+  echo "Could not download the region boundary from ${POLY_URL}." >&2
+  echo "Check the region path (e.g. europe/germany/berlin)." >&2
+  exit 1
+fi
+
+# The .poly file lists the boundary as "lon lat" pairs; take the min and max of each.
+BOUNDS="$(printf '%s\n' "${POLY}" | tr -d '\r' | LC_ALL=C awk '
+  NF == 2 && $1 ~ /^[-+0-9.eE]+$/ && $2 ~ /^[-+0-9.eE]+$/ {
+    lon = $1 + 0; lat = $2 + 0
+    if (!seen++) { w = e = lon; s = n = lat }
+    if (lon < w) w = lon
+    if (lon > e) e = lon
+    if (lat < s) s = lat
+    if (lat > n) n = lat
+  }
+  END { if (seen) printf "%.5f %.5f %.5f %.5f\n", w, e, s, n }')"
+
+if [ -z "${BOUNDS}" ]; then
+  echo "Could not read any coordinates from ${POLY_URL}." >&2
+  exit 1
+fi
+read -r WEST EAST SOUTH NORTH <<< "${BOUNDS}"
+
+cat > "${ENV_FILE}" <<EOF
+MAP_BOUNDS_SOUTH=${SOUTH}
+MAP_BOUNDS_WEST=${WEST}
+MAP_BOUNDS_NORTH=${NORTH}
+MAP_BOUNDS_EAST=${EAST}
+EOF
+echo "    south=${SOUTH} west=${WEST} north=${NORTH} east=${EAST} (saved to .env)"
 
 echo "==> Downloading ${URL}"
 (
