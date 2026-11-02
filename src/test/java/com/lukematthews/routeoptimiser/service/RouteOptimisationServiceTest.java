@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static com.lukematthews.routeoptimiser.testsupport.TestMatrices.line;
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,6 +22,20 @@ class RouteOptimisationServiceTest {
 
     private static RouteOptimisationService serviceWith(RoutingClient client, RouteSolver solver, int maxStops){
         return new RouteOptimisationService(client, solver, new RouteProperties(maxStops));
+    }
+
+    private static RoutingClient withGeometry(DurationMatrix matrix, Function<List<Coordinate>, List<Coordinate>> geometry){
+        return new RoutingClient(){
+            @Override
+            public DurationMatrix getDurationMatrix(List<Coordinate> coords){
+                return matrix;
+            }
+
+            @Override
+            public List<Coordinate> getRouteGeometry(List<Coordinate> ordered){
+                return geometry.apply(ordered);
+            }
+        };
     }
 
     @Test
@@ -143,5 +158,52 @@ class RouteOptimisationServiceTest {
 
         assertThrows(IllegalStateException.class,
                 () -> serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b, c)));
+    }
+
+    @Test
+    void includesRoadGeometryFromRoutingClient() {
+        List<Coordinate> roadPoints = List.of(
+                new Coordinate(51.5, -0.1), new Coordinate(51.55, -0.15), new Coordinate(51.6, -0.2));
+        RoutingClient client = withGeometry(line(0, 1), ordered -> roadPoints);
+
+        Route route = serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b));
+
+        assertEquals(roadPoints, route.geometry());
+    }
+
+    @Test
+    void requestsGeometryInSolvedVisitingOrder() {
+        List<List<Coordinate>> received = new ArrayList<>();
+        RoutingClient client = withGeometry(line(0, 10, 3), ordered -> {
+            received.add(ordered);
+            return List.of();
+        });
+        RouteSolver solver = (matrix, start) -> List.of(0, 2, 1); // A, C, B
+
+        serviceWith(client, solver, 10).optimise(a, List.of(b, c));
+
+        assertEquals(1, received.size());
+        assertEquals(List.of(a.coordinate(), c.coordinate(), b.coordinate()), received.get(0));
+    }
+
+    @Test
+    void geometryFailureDoesNotFailTheRoute() {
+        for (RuntimeException failure : List.of(
+                new RoutingUnavailableException("osrm down"), new NoRouteFoundException("no road"))) {
+            RoutingClient client = withGeometry(line(0, 1, 2), ordered -> { throw failure; });
+
+            Route route = serviceWith(client, new NearestNeighbourSolver(), 10).optimise(a, List.of(b, c));
+
+            assertEquals(3, route.stops().size());
+            assertTrue(route.geometry().isEmpty());
+        }
+    }
+
+    @Test
+    void routeHasNoGeometryWhenClientCannotProvideIt() {
+        Route route = serviceWith(coords -> line(0, 1), new NearestNeighbourSolver(), 10)
+                .optimise(a, List.of(b));
+
+        assertTrue(route.geometry().isEmpty());
     }
 }

@@ -1,6 +1,5 @@
-package com.lukematthews.routeoptimiser.routing.dto;
+package com.lukematthews.routeoptimiser.api.dto;
 
-import com.lukematthews.routeoptimiser.api.dto.RouteResponse;
 import com.lukematthews.routeoptimiser.domain.Coordinate;
 import com.lukematthews.routeoptimiser.domain.Route;
 import com.lukematthews.routeoptimiser.domain.Stop;
@@ -11,7 +10,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class OsrmRouteResponseTest {
+class RouteResponseTest {
     private final Stop a = Stop.of(new Coordinate(51.5, -0.1));
 
     @Test

@@ -48,4 +48,23 @@ class RouteTest {
         stops.add(b);
         assertEquals(1, route.stops().size());
     }
+
+    @Test
+    void geometryDefaultsToEmpty() {
+        assertTrue(new Route(List.of(a), List.of()).geometry().isEmpty());
+    }
+
+    @Test
+    void isUnaffectedByLaterChangesToGeometryList() {
+        List<Coordinate> geometry = new ArrayList<>(List.of(new Coordinate(51.5, -0.1)));
+        Route route = new Route(List.of(a), List.of(), geometry);
+        geometry.add(new Coordinate(51.6, -0.2));
+
+        assertEquals(1, route.geometry().size());
+    }
+
+    @Test
+    void rejectsNullGeometry() {
+        assertThrows(NullPointerException.class, () -> new Route(List.of(a), List.of(), null));
+    }
 }
