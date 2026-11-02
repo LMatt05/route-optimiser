@@ -5,6 +5,7 @@ target/
 !**/src/test/**/target/
 
 osrm-data/
+.env
 
 ### STS ###
 .apt_generated
